@@ -150,18 +150,20 @@ with st.form("formulario"):
             "Tipo de Pago",
             ["Prepagable", "Postpagable"]
         )
+
+ 
     # --------------------------------------------------------
     # BLOQUE B: CARACTERISTICAS DEL SEGURO
     # --------------------------------------------------------
-
+    
     st.divider()
-
+    
     st.subheader("02. Características del seguro")
-
+    
     col5, col6, col7 = st.columns(3)
-
+    
     with col5:
-
+    
         capital_asegurado = st.number_input(
             "Capital asegurado (€)",
             min_value=1000.0,
@@ -170,29 +172,33 @@ with st.form("formulario"):
             step=5000.0,
             format="%.2f"
         )
-
+    
     with col6:
-
+    
         duracion = st.selectbox(
             "Duración del seguro (años)",
             list(range(1, 41)),
             index=19
         )
-
+    
+    with col7:
+    
+        edad_cobertura = st.number_input(
+            "Edad Cobertura",
+            min_value=18,
+            max_value=100,
+            value=60,
+            step=1,
+            format="%d"
+        )
+    
     fecha_vencimiento = sumar_anios(
         fecha_efecto,
         duracion
     )
+
     
-    with col7:
-    edad_cobertura = st.number_input(
-        "Edad Cobertura",
-        min_value=18,
-        max_value=100,
-        value=60,
-        step=1,
-        format="%d"
-    )
+    
 
     # --------------------------------------------------------
     # BLOQUE C: MODALIDAD DE PAGO
@@ -222,18 +228,17 @@ with st.form("formulario"):
 
     st.subheader("04. Resumen actuarial")
 
-    col8, col9, col10 ,col11= st.columns(3)
+    col8, col9, col10 ,col11= st.columns(4)
 
     col8.metric(
         "Edad actuarial",
         f"{edad_actuarial} años"
     )
 
-     col9.metric(
-         "Edad de cobertura",
+    col9.metric(
+         "Edad Cobertura",
          f"{edad_cobertura} años"
      )
-    
     
     col10.metric(
         "Duración",
