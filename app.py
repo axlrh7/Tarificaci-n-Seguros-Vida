@@ -141,7 +141,7 @@ with st.form("formulario"):
 
         producto = st.selectbox(
             "Producto",
-            ["Temporal de fallecimiento"]
+            ["Vida Entera"]
         )
         
     with col4:
@@ -158,7 +158,7 @@ with st.form("formulario"):
 
     st.subheader("02. Características del seguro")
 
-    col5, col6 = st.columns(2)
+    col5, col6, col7 = st.columns(3)
 
     with col5:
 
@@ -182,6 +182,16 @@ with st.form("formulario"):
     fecha_vencimiento = sumar_anios(
         fecha_efecto,
         duracion
+    )
+    
+    with col7:
+    edad_cobertura = st.number_input(
+        "Edad Cobertura",
+        min_value=18,
+        max_value=100,
+        value=60,
+        step=1,
+        format="%d"
     )
 
     # --------------------------------------------------------
@@ -212,19 +222,25 @@ with st.form("formulario"):
 
     st.subheader("04. Resumen actuarial")
 
-    col7, col8, col9 = st.columns(3)
+    col8, col9, col10 ,col11= st.columns(3)
 
-    col7.metric(
+    col8.metric(
         "Edad actuarial",
         f"{edad_actuarial} años"
     )
 
-    col8.metric(
+     col9.metric(
+         "Edad de cobertura",
+         f"{edad_cobertura} años"
+     )
+    
+    
+    col10.metric(
         "Duración",
         f"{duracion} años"
     )
 
-    col9.metric(
+    col11.metric(
         "Fecha de vencimiento",
         fecha_vencimiento.strftime("%d/%m/%Y")
     )
