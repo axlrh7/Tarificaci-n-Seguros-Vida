@@ -263,28 +263,14 @@ with st.form("formulario"):
     )
 
 
+
 # ============================================================
 # 5. VALIDACION Y REGISTRO
 # ============================================================
 
 if enviar:
 
-    solicitud = solicitud.strip().upper()
-
-    solicitudes_existentes = (
-        st.session_state.polizas["solicitud"]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
-
-    if not solicitud:
-
-        st.error(
-            "Introduce un número de solicitud."
-        )
-
-    elif fecha_nacimiento >= fecha_efecto:
+    if fecha_nacimiento >= fecha_efecto:
 
         st.error(
             "La fecha de nacimiento debe ser anterior "
@@ -315,17 +301,9 @@ if enviar:
             "El capital mínimo asegurado es de 1.000 €."
         )
 
-    elif solicitud in solicitudes_existentes.values:
-
-        st.error(
-            "Esta solicitud ya existe."
-        )
-
     else:
 
         nueva_poliza = {
-
-            "solicitud": solicitud,
 
             "producto": producto,
 
@@ -341,7 +319,11 @@ if enviar:
 
             "capital_asegurado": capital_asegurado,
 
-            "modalidad_pago": modalidad_pago
+            "modalidad_pago": modalidad_pago,
+
+            "tipo_de_pago": tipo_de_pago,
+
+            "edad_cobertura": edad_cobertura
 
         }
 
@@ -354,8 +336,9 @@ if enviar:
         )
 
         st.success(
-            f"Solicitud {solicitud} registrada correctamente."
+            "Cotización registrada correctamente."
         )
+
 
 
 # ============================================================
