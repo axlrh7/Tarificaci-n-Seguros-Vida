@@ -1,45 +1,91 @@
 
 # ============================================================
 # PROYECTO ACTUARIAL
-# UI - GESTOR DE POLIZAS
+# COTIZADOR DE SEGUROS DE VIDA - MVP
 # ============================================================
 
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime import date, timedelta
 
 # ============================================================
-# 1. CONFIGURACION DE LA APLICACION
+# 1. CONFIGURACION
 # ============================================================
 
 st.set_page_config(
-    page_title="Gestor de Polizas Actuariales",
-    page_icon="📊",
+    page_title="Life Insurance Analytics",
+    page_icon="🛡️",
     layout="wide"
 )
 
-st.title("Gestor de Polizas Actuariales")
+st.title("🛡️ Life Insurance Analytics")
+st.caption("Cotizador actuarial | Seguro temporal de fallecimiento")
 
-st.write(
-    "Aplicacion para registrar y gestionar polizas "
-    "de seguros de vida."
-)
+st.divider()
 
 # ============================================================
-# 2. DEFINIR LAS VARIABLES
+# 2. FUNCIONES ACTUARIALES AUXILIARES
+# ============================================================
+
+def cumpleanos_en_anio(fecha_nacimiento, anio):
+
+    try:
+        return fecha_nacimiento.replace(year=anio)
+    except ValueError:
+        # Tratamiento de nacimientos el 29 de febrero
+        return date(anio, 2, 28)
+
+
+def calcular_edad_actuarial(fecha_nacimiento, fecha_efecto):
+
+    edad = fecha_efecto.year - fecha_nacimiento.year
+
+    ultimo_cumpleanos = cumpleanos_en_anio(
+        fecha_nacimiento, fecha_efecto.year
+    )
+
+    if ultimo_cumpleanos > fecha_efecto:
+        edad -= 1
+
+    siguiente_cumpleanos = cumpleanos_en_anio(
+        fecha_nacimiento, fecha_efecto.year + 1
+    )
+
+    dias_desde = (fecha_efecto - ultimo_cumpleanos).days
+    dias_hasta = (siguiente_cumpleanos - fecha_efecto).days
+
+    # Redondeo al cumpleaños más próximo.
+    # En caso de empate se conserva la edad cumplida.
+
+    if dias_hasta < dias_desde:
+        edad += 1
+
+    return edad
+
+
+def sumar_anios(fecha, anios):
+
+    try:
+        return fecha.replace(year=fecha.year + anios)
+    except ValueError:
+        return date(fecha.year + anios, 2, 28)
+
+
+# ============================================================
+# 3. ALMACENAMIENTO DE SOLICITUDES
 # ============================================================
 
 columnas = [
-    'poliza',
-    'producto',
-    'sexo',
-    'fecha_nacimiento',
-    'fecha_efecto',
-    'fecha_vencimiento',
-    'capital_asegurado'
+    "solicitud",
+    "producto",
+    "fecha_nacimiento",
+    "edad_actuarial",
+    "fecha_efecto",
+    "fecha_vencimiento",
+    "duracion",
+    "capital_asegurado",
+    "modalidad_pago"
 ]
-
-# Crear almacenamiento de polizas durante la sesion
 
 if "polizas" not in st.session_state:
 
@@ -47,75 +93,142 @@ if "polizas" not in st.session_state:
         columns=columnas
     )
 
+
 # ============================================================
-# 3. FORMULARIO DE INTRODUCCION DE POLIZAS
+# 4. FORMULARIO DE COTIZACION
 # ============================================================
 
-st.header("1. Introduccion de una nueva poliza")
+st.header("Nueva cotización")
 
-with st.form("formulario_poliza"):
+with st.form("formulario_cotizacion"):
+
+    # --------------------------------------------------------
+    # BLOQUE A: DATOS DEL ASEGURADO
+    # --------------------------------------------------------
+
+    st.subheader("01. Datos del asegurado")
 
     col1, col2 = st.columns(2)
 
     with col1:
 
-        poliza = st.text_input(
-            "Numero de poliza"
-        )
-
-        producto = st.selectbox(
-            "Producto",
-            ["Temporal fallecimiento"]
-        )
-
-        sexo = st.selectbox(
-            "Sexo",
-            ["H", "M"]
+        solicitud = st.text_input(
+            "Número de solicitud",
+            placeholder="Ej. SOL-0001"
         )
 
         fecha_nacimiento = st.date_input(
             "Fecha de nacimiento",
             value=date(1989, 5, 15),
-            min_value=date(1900, 1, 1)
+            min_value=date(1900, 1, 1),
+            max_value=date.today()
         )
 
     with col2:
 
         fecha_efecto = st.date_input(
             "Fecha de efecto",
-            value=date.today()
+            value=date.today(),
+            min_value=date.today()
         )
 
-        fecha_vencimiento = st.date_input(
-            "Fecha de vencimiento",
-            value=date(date.today().year + 20,
-                       date.today().month,
-                       date.today().day)
+        producto = st.selectbox(
+            "Producto",
+            ["Temporal de fallecimiento"]
         )
+
+    # --------------------------------------------------------
+    # BLOQUE B: CARACTERISTICAS DEL SEGURO
+    # --------------------------------------------------------
+
+    st.divider()
+    st.subheader("02. Características del seguro")
+
+    col3, col4 = st.columns(2)
+
+    with col3:
 
         capital_asegurado = st.number_input(
             "Capital asegurado (€)",
-            min_value=0.01,
+            min_value=1000.0,
             value=100000.0,
-            step=1000.0
+            step=5000.0
         )
 
+    with col4:
 
-    # Boton de registro
+        duracion = st.selectbox(
+            "Duración del seguro (años)",
+            list(range(1, 41)),
+            index=19
+        )
 
-    enviar = st.form_submit_button(
-        "Registrar poliza"
+    fecha_vencimiento = sumar_anios(
+        fecha_efecto, duracion
     )
 
+    # --------------------------------------------------------
+    # BLOQUE C: MODALIDAD DE PAGO
+    # --------------------------------------------------------
+
+    st.divider()
+    st.subheader("03. Modalidad de pago")
+
+    modalidad_pago = st.radio(
+        "Modalidades que se desean cotizar",
+        ["Ambas", "Anual", "Mensual"],
+        horizontal=True,
+        index=0
+    )
+
+    # --------------------------------------------------------
+    # BLOQUE D: EDAD ACTUARIAL
+    # --------------------------------------------------------
+
+    edad_actuarial = calcular_edad_actuarial(
+        fecha_nacimiento,
+        fecha_efecto
+    )
+
+    st.divider()
+
+    col5, col6, col7 = st.columns(3)
+
+    col5.metric(
+        "Edad actuarial",
+        f"{edad_actuarial} años"
+    )
+
+    col6.metric(
+        "Duración",
+        f"{duracion} años"
+    )
+
+    col7.metric(
+        "Vencimiento",
+        fecha_vencimiento.strftime("%d/%m/%Y")
+    )
+
+    # --------------------------------------------------------
+    # BOTON DE COTIZACION
+    # --------------------------------------------------------
+
+    enviar = st.form_submit_button(
+        "Generar solicitud de cotización",
+        type="primary",
+        use_container_width=True
+    )
+
+
 # ============================================================
-# 4. VALIDAR Y GUARDAR LA POLIZA
+# 5. VALIDACION Y REGISTRO
 # ============================================================
 
 if enviar:
 
-    if not poliza.strip():
+    if not solicitud.strip():
 
-        st.error("Debe introducir un numero de poliza.")
+        st.error("Introduce un número de solicitud.")
 
     elif fecha_nacimiento >= fecha_efecto:
 
@@ -124,27 +237,30 @@ if enviar:
             "a la fecha de efecto."
         )
 
-    elif fecha_efecto >= fecha_vencimiento:
+    elif fecha_efecto < date.today():
 
-        st.error(
-            "La fecha de efecto debe ser anterior "
-            "al vencimiento."
-        )
+        st.error("La fecha de efecto no puede estar en el pasado.")
 
-    elif poliza in st.session_state.polizas['poliza'].values:
+    elif edad_actuarial < 18:
 
-        st.error("Esta poliza ya existe.")
+        st.error("La edad del asegurado debe ser de al menos 18 años.")
+
+    elif solicitud in st.session_state.polizas["solicitud"].values:
+
+        st.error("Esta solicitud ya existe.")
 
     else:
 
         nueva_poliza = {
-            'poliza': poliza,
-            'producto': producto,
-            'sexo': sexo,
-            'fecha_nacimiento': fecha_nacimiento,
-            'fecha_efecto': fecha_efecto,
-            'fecha_vencimiento': fecha_vencimiento,
-            'capital_asegurado': capital_asegurado
+            "solicitud": solicitud,
+            "producto": producto,
+            "fecha_nacimiento": fecha_nacimiento,
+            "edad_actuarial": edad_actuarial,
+            "fecha_efecto": fecha_efecto,
+            "fecha_vencimiento": fecha_vencimiento,
+            "duracion": duracion,
+            "capital_asegurado": capital_asegurado,
+            "modalidad_pago": modalidad_pago
         }
 
         st.session_state.polizas = pd.concat(
@@ -155,50 +271,30 @@ if enviar:
             ignore_index=True
         )
 
-        st.success("Poliza registrada correctamente.")
+        st.success("Solicitud registrada correctamente.")
+
 
 # ============================================================
-# 5. MOSTRAR CARTERA DE POLIZAS
+# 6. GESTION DE SOLICITUDES
 # ============================================================
 
 st.divider()
 
-st.header("2. Cartera de polizas")
+st.header("Solicitudes registradas")
 
-polizas = st.session_state.polizas
-
-if not polizas.empty:
-
-    st.metric(
-        "Numero de polizas registradas",
-        len(polizas)
-    )
+if not st.session_state.polizas.empty:
 
     st.dataframe(
-        polizas,
+        st.session_state.polizas,
         use_container_width=True,
         hide_index=True
     )
 
-    # ========================================================
-    # 6. EXPORTAR A EXCEL
-    # ========================================================
-
-    archivo_excel = polizas.to_excel(
-        index=False,
-        engine="openpyxl"
-    )
-
-    st.download_button(
-        label="Descargar cartera en Excel",
-        data=archivo_excel,
-        file_name="cartera_polizas.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    st.caption(
+        f"Total de solicitudes: "
+        f"{len(st.session_state.polizas)}"
     )
 
 else:
 
-    st.info(
-        "Todavia no hay polizas registradas. "
-        "Introduce una poliza en el formulario."
-    )
+    st.info("Todavía no hay solicitudes registradas.")
