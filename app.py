@@ -263,14 +263,28 @@ with st.form("formulario"):
     )
 
 
-
 # ============================================================
 # 5. VALIDACION Y REGISTRO
 # ============================================================
 
 if enviar:
 
-    if fecha_nacimiento >= fecha_efecto:
+    solicitud = solicitud.strip().upper()
+
+    solicitudes_existentes = (
+        st.session_state.polizas["solicitud"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    if not solicitud:
+
+        st.error(
+            "Introduce un número de solicitud."
+        )
+
+    elif fecha_nacimiento >= fecha_efecto:
 
         st.error(
             "La fecha de nacimiento debe ser anterior "
@@ -301,9 +315,17 @@ if enviar:
             "El capital mínimo asegurado es de 1.000 €."
         )
 
+    elif solicitud in solicitudes_existentes.values:
+
+        st.error(
+            "Esta solicitud ya existe."
+        )
+
     else:
 
         nueva_poliza = {
+
+            "solicitud": solicitud,
 
             "producto": producto,
 
@@ -319,11 +341,7 @@ if enviar:
 
             "capital_asegurado": capital_asegurado,
 
-            "modalidad_pago": modalidad_pago,
-
-            "tipo_de_pago": tipo_de_pago,
-
-            "edad_cobertura": edad_cobertura
+            "modalidad_pago": modalidad_pago
 
         }
 
@@ -336,9 +354,8 @@ if enviar:
         )
 
         st.success(
-            "Cotización registrada correctamente."
+            f"Solicitud {solicitud} registrada correctamente."
         )
-
 
 
 # ============================================================
@@ -392,40 +409,32 @@ if not st.session_state.polizas.empty:
     # --------------------------------------------------------
 
     st.divider()
+    
+    st.subheader("Eliminar cotización")
 
-    st.subheader("Eliminar solicitud")
-
-    solicitudes = st.session_state.polizas["solicitud"].tolist()
-
-    solicitud_eliminar = st.selectbox(
-        "Selecciona la solicitud que deseas eliminar",
-        solicitudes
+    indice_eliminar = st.selectbox(
+        "Selecciona la cotización",
+        st.session_state.polizas.index,
+        format_func=lambda x: f"Cotización {x + 1}"
     )
 
-    if st.button(
-        "Eliminar solicitud seleccionada",
-        type="secondary"
-    ):
-
+    if st.button("Eliminar cotización"):
+    
         st.session_state.polizas = (
-            st.session_state.polizas[
-                st.session_state.polizas["solicitud"]
-                != solicitud_eliminar
-            ]
+            st.session_state.polizas
+            .drop(index=indice_eliminar)
             .reset_index(drop=True)
         )
-
-        st.success(
-            f"Solicitud {solicitud_eliminar} eliminada."
-        )
-
+    
+        st.success("Cotización eliminada correctamente.")
+    
         st.rerun()
-
-else:
-
-    st.info(
-        "Todavía no hay solicitudes registradas."
-    )
+    
+    else:
+    
+        st.info(
+            "Todavía no hay solicitudes registradas."
+        )
 
 
 # ============================================================
