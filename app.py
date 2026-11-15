@@ -383,32 +383,6 @@ if not st.session_state.polizas.empty:
         hide_index=True
     )
 
-    # --------------------------------------------------------
-    # DESCARGA EXCEL
-    # --------------------------------------------------------
-
-    st.subheader("Exportación de datos")
-
-    buffer = BytesIO()
-
-    with pd.ExcelWriter(
-        buffer,
-        engine="openpyxl"
-    ) as writer:
-
-        st.session_state.polizas.to_excel(
-            writer,
-            index=False,
-            sheet_name="Solicitudes"
-        )
-
-    st.download_button(
-        label="Descargar histórico en Excel",
-        data=buffer.getvalue(),
-        file_name="historico_cotizaciones.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
 
     # --------------------------------------------------------
     # ELIMINACION DE SOLICITUDES
