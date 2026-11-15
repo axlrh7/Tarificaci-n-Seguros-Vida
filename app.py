@@ -108,7 +108,7 @@ with st.form("formulario_cotizacion"):
 
     st.subheader("01. Datos del asegurado")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
 
@@ -116,22 +116,24 @@ with st.form("formulario_cotizacion"):
             "Número de solicitud",
             placeholder="Ej. SOL-0001"
         )
-
+        
+    with col2:
+         
         fecha_nacimiento = st.date_input(
             "Fecha de nacimiento",
-            value=date(1989, 5, 15),
+            placeholder="YYYY-MM-DD",
             min_value=date(1900, 1, 1),
             max_value=date.today()
         )
 
-    with col2:
+    with col3:
 
         fecha_efecto = st.date_input(
             "Fecha de efecto",
             value=date.today(),
             min_value=date.today()
         )
-
+    with col4:
         producto = st.selectbox(
             "Producto",
             ["Temporal de fallecimiento"]
