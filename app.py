@@ -81,7 +81,6 @@ def sumar_anios(fecha, anios):
 # ============================================================
 
 columnas = [
-    "solicitud",
     "producto",
     "fecha_nacimiento",
     "edad_actuarial",
@@ -89,7 +88,8 @@ columnas = [
     "fecha_vencimiento",
     "duracion",
     "capital_asegurado",
-    "modalidad_pago"
+    "modalidad_pago",
+    "tipo_de_pago"
 ]
 
 # Almacenamiento temporal en memoria de sesión.
@@ -106,9 +106,9 @@ if "polizas" not in st.session_state:
 # 4. FORMULARIO DE COTIZACION
 # ============================================================
 
-st.header("Nueva cotización")
+st.header("Nueva tarificacion")
 
-with st.form("formulario_cotizacion"):
+with st.form("formulario"):
 
     # --------------------------------------------------------
     # BLOQUE A: DATOS DEL ASEGURADO
@@ -120,13 +120,6 @@ with st.form("formulario_cotizacion"):
 
     with col1:
 
-        solicitud = st.text_input(
-            "Número de solicitud",
-            placeholder="Ej. SOL-0001"
-        )
-
-    with col2:
-
         fecha_nacimiento = st.date_input(
             "Fecha de nacimiento",
             value=date(1990, 1, 1),
@@ -135,7 +128,7 @@ with st.form("formulario_cotizacion"):
             format="DD/MM/YYYY"
         )
 
-    with col3:
+    with col2:
 
         fecha_efecto = st.date_input(
             "Fecha de efecto",
@@ -144,13 +137,19 @@ with st.form("formulario_cotizacion"):
             format="DD/MM/YYYY"
         )
 
-    with col4:
+    with col3:
 
         producto = st.selectbox(
             "Producto",
             ["Temporal de fallecimiento"]
         )
+        
+    with col4:
 
+        tipo_de_pago = st.selectbox(
+            "Tipo de Pago",
+            ["Prepagable", "Postpagable"]
+        )
     # --------------------------------------------------------
     # BLOQUE B: CARACTERISTICAS DEL SEGURO
     # --------------------------------------------------------
