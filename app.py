@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 st.title("Calculo de primas de seguros de Vida")
-st.caption("Cotizador actuarial | Seguro temporal de fallecimiento")
+st.caption("Cotizador actuarial ")
 
 st.divider()
 
