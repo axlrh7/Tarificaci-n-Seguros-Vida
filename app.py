@@ -303,28 +303,6 @@ st.header("Solicitudes registradas")
 
 if not st.session_state.polizas.empty:
 
-    # --------------------------------------------------------
-    # INDICADORES
-    # --------------------------------------------------------
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "Total de solicitudes",
-        len(st.session_state.polizas)
-    )
-
-    col2.metric(
-        "Capital total asegurado",
-        f"{st.session_state.polizas['capital_asegurado'].sum():,.2f} €"
-    )
-
-    col3.metric(
-        "Duración media",
-        f"{st.session_state.polizas['duracion'].mean():.1f} años"
-    )
-
-    st.divider()
 
     # --------------------------------------------------------
     # TABLA DE SOLICITUDES
