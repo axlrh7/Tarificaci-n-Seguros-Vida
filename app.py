@@ -330,7 +330,7 @@ if not st.session_state.polizas.empty:
     # TABLA DE SOLICITUDES
     # --------------------------------------------------------
 
-    st.subheader("Histórico de solicitudes")
+    st.subheader("Histórico de polizas")
 
     st.dataframe(
         st.session_state.polizas,
@@ -345,7 +345,7 @@ if not st.session_state.polizas.empty:
 
     st.divider()
     
-    st.subheader("Eliminar cotización")
+    st.subheader("Eliminar poliza")
 
     indice_eliminar = st.selectbox(
         "Selecciona la cotización",
