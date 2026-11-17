@@ -233,7 +233,7 @@ with st.form("formulario"):
     # --------------------------------------------------------
 
     enviar = st.form_submit_button(
-        "Generar solicitud de cotización",
+        "Guardar poliza en la base de datos",
         type="primary",
         use_container_width=True
     )
@@ -372,32 +372,7 @@ if not st.session_state.polizas.empty:
         )
 
 
-# ============================================================
-# 7. INFORMACION DEL MODELO
-# ============================================================
 
-st.divider()
-
-with st.expander("Información del modelo actuarial"):
-
-    st.write(
-        """
-        **Producto:** Seguro temporal de fallecimiento.
-
-        **Criterio de edad:** Edad actuarial por cumpleaños
-        más próximo.
-
-        **Duración:** Entre 1 y 40 años.
-
-        **Modalidades:** Anual, mensual o ambas.
-
-        **Almacenamiento:** Temporal mediante session_state.
-
-        **Tarificación:** Pendiente de implementar.
-
-        **Tabla de mortalidad:** Pendiente de incorporar.
-        """
-    )
 
 st.caption(
     "Life Insurance Analytics | Proyecto actuarial | MVP"
