@@ -85,7 +85,6 @@ columnas = [
     "fecha_nacimiento",
     "edad_actuarial",
     "fecha_efecto",
-    "fecha_vencimiento",
     "duracion",
     "capital_asegurado",
     "modalidad_pago",
@@ -213,7 +212,7 @@ with st.form("formulario"):
 
     st.subheader("04. Resumen actuarial")
 
-    col9, col10, col11 ,col12= st.columns(4)
+    col9, col10, col11 = st.columns(3)
 
     col9.metric(
         "Edad actuarial",
@@ -229,6 +228,7 @@ with st.form("formulario"):
         "Duración",
         f"{duracion} años"
     )
+
 
     st.divider()
 
@@ -314,8 +314,6 @@ if enviar:
             "edad_actuarial": edad_actuarial,
 
             "fecha_efecto": fecha_efecto,
-
-            "fecha_vencimiento": fecha_vencimiento,
 
             "duracion": duracion,
 
