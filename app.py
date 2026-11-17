@@ -160,7 +160,7 @@ with st.form("formulario"):
     
     st.subheader("02. Características del seguro")
     
-    col5, col6, col7 = st.columns(3)
+    col5, col6, col7, col8 = st.columns(4)
     
     with col5:
     
@@ -192,28 +192,13 @@ with st.form("formulario"):
             format="%d"
         )
     
-    fecha_vencimiento = sumar_anios(
-        fecha_efecto,
-        duracion
-    )
+    with col8:
+        
+            modalidad_pago = st.selectbox(
+                "Modalidad de pago",
+                ["Anual", "Mensual"])
 
-    
-    
 
-    # --------------------------------------------------------
-    # BLOQUE C: MODALIDAD DE PAGO
-    # --------------------------------------------------------
-
-    st.divider()
-
-    st.subheader("03. Modalidad de pago")
-
-    modalidad_pago = st.radio(
-        "Modalidades que se desean cotizar",
-        ["Ambas", "Anual", "Mensual"],
-        horizontal=True,
-        index=0
-    )
 
     # --------------------------------------------------------
     # BLOQUE D: EDAD ACTUARIAL
@@ -228,24 +213,24 @@ with st.form("formulario"):
 
     st.subheader("04. Resumen actuarial")
 
-    col8, col9, col10 ,col11= st.columns(4)
+    col9, col10, col11 ,col12= st.columns(4)
 
-    col8.metric(
+    col9.metric(
         "Edad actuarial",
         f"{edad_actuarial} años"
     )
 
-    col9.metric(
+    col10.metric(
          "Edad Cobertura",
          f"{edad_cobertura} años"
      )
     
-    col10.metric(
+    col11.metric(
         "Duración",
         f"{duracion} años"
     )
 
-    col11.metric(
+    col12.metric(
         "Fecha de vencimiento",
         fecha_vencimiento.strftime("%d/%m/%Y")
     )
