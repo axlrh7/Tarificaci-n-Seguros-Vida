@@ -86,19 +86,15 @@ columnas = [
     "edad_actuarial",
     "fecha_efecto",
     "duracion",
+    "edad_cobertura",
     "capital_asegurado",
     "modalidad_pago",
     "tipo_de_pago"
 ]
 
-# Almacenamiento temporal en memoria de sesión.
-# Los datos se perderán al finalizar la sesión.
-
 if "polizas" not in st.session_state:
+    st.session_state.polizas = pd.DataFrame(columns=columnas)
 
-    st.session_state.polizas = pd.DataFrame(
-        columns=columnas
-    )
 
 
 # ============================================================
@@ -243,84 +239,46 @@ with st.form("formulario"):
     )
 
 
+
 # ============================================================
 # 5. VALIDACION Y REGISTRO
 # ============================================================
 
 if enviar:
 
-    solicitud = solicitud.strip().upper()
-
-    solicitudes_existentes = (
-        st.session_state.polizas["solicitud"]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
-
-    if not solicitud:
-
-        st.error(
-            "Introduce un número de solicitud."
-        )
-
-    elif fecha_nacimiento >= fecha_efecto:
-
+    if fecha_nacimiento >= fecha_efecto:
         st.error(
             "La fecha de nacimiento debe ser anterior "
             "a la fecha de efecto."
         )
 
-    elif fecha_efecto < date.today():
-
-        st.error(
-            "La fecha de efecto no puede estar en el pasado."
-        )
-
     elif edad_actuarial < 18:
-
         st.error(
             "La edad actuarial mínima permitida es de 18 años."
         )
 
     elif edad_actuarial > 80:
-
         st.error(
             "La edad actuarial máxima provisional es de 80 años."
         )
 
     elif capital_asegurado < 1000:
-
         st.error(
             "El capital mínimo asegurado es de 1.000 €."
-        )
-
-    elif solicitud in solicitudes_existentes.values:
-
-        st.error(
-            "Esta solicitud ya existe."
         )
 
     else:
 
         nueva_poliza = {
-
-            "solicitud": solicitud,
-
             "producto": producto,
-
             "fecha_nacimiento": fecha_nacimiento,
-
             "edad_actuarial": edad_actuarial,
-
             "fecha_efecto": fecha_efecto,
-
             "duracion": duracion,
-
+            "edad_cobertura": edad_cobertura,
             "capital_asegurado": capital_asegurado,
-
-            "modalidad_pago": modalidad_pago
-
+            "modalidad_pago": modalidad_pago,
+            "tipo_de_pago": tipo_de_pago
         }
 
         st.session_state.polizas = pd.concat(
@@ -331,9 +289,8 @@ if enviar:
             ignore_index=True
         )
 
-        st.success(
-            f"Solicitud {solicitud} registrada correctamente."
-        )
+        st.success("Cotización registrada correctamente.")
+
 
 
 # ============================================================
