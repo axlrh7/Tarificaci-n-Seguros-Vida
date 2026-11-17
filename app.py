@@ -299,7 +299,7 @@ if enviar:
 
 st.divider()
 
-st.header("Solicitudes registradas")
+st.header("Gestión de Pólizas Registradas")
 
 if not st.session_state.polizas.empty:
 
