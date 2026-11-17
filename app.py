@@ -14,12 +14,11 @@ from io import BytesIO
 # ============================================================
 
 st.set_page_config(
-    page_title="Calculo de primas de seguros de Vida",
+    page_title="Cotizador actuarial de seguros de Vida",
     layout="wide"
 )
 
-st.title("Calculo de primas de seguros de Vida")
-st.caption("Cotizador actuarial ")
+st.title("Cotizador actuarial de seguros de Vida")
 
 st.divider()
 
