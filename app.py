@@ -205,7 +205,7 @@ with st.form("formulario"):
 
     st.divider()
 
-    st.subheader("04. Resumen actuarial")
+    st.subheader("03. Resumen actuarial")
 
     col9, col10, col11 = st.columns(3)
 
