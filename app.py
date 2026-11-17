@@ -230,11 +230,6 @@ with st.form("formulario"):
         f"{duracion} años"
     )
 
-    col12.metric(
-        "Fecha de vencimiento",
-        fecha_vencimiento.strftime("%d/%m/%Y")
-    )
-
     st.divider()
 
     # --------------------------------------------------------
