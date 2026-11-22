@@ -1,12 +1,12 @@
+
 # ============================================================
 # PROYECTO ACTUARIAL
 # COTIZADOR DE SEGUROS DE VIDA - MVP
+# TABLA PASEM2019 - SEGUNDO ORDEN
 # ============================================================
 
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
 from datetime import date
 from io import BytesIO
@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 st.title("Cotizador actuarial de seguros de Vida")
-st.caption("Proyecto actuarial | MVP")
+st.caption("Life Insurance Analytics | Proyecto actuarial")
 
 st.divider()
 
@@ -65,191 +65,84 @@ def calcular_edad_actuarial(fecha_nacimiento, fecha_efecto):
         siguiente_cumpleanos - fecha_efecto
     ).days
 
-    # Edad actuarial: cumpleaños más próximo
+    # Redondeo al cumpleaños más próximo
     if dias_hasta < dias_desde:
         edad += 1
 
     return edad
 
 
-def sumar_anios(fecha, anios):
-
-    try:
-        return fecha.replace(year=fecha.year + anios)
-
-    except ValueError:
-        return date(fecha.year + anios, 2, 28)
-
-
 # ============================================================
-# 3. FUNCIONES PARA TABLAS DE MORTALIDAD
+# 3. TABLA DE MORTALIDAD PASEM2019
 # ============================================================
 
-def preparar_tabla_mortalidad(df_original):
+def preparar_tabla_pasem(archivo, sexo):
 
-    df = df_original.copy()
+    """
+    Lee el Excel oficial facilitado para el proyecto.
 
-    # Normalizar nombres de columnas
-    df.columns = (
-        df.columns.astype(str)
-        .str.lower()
-        .str.strip()
-        .str.replace(" ", "_")
+    Hoja:
+    Anexo 1.2 y Anexo 1.3
+
+    Estructura:
+    Fila 5: Título de la tabla
+    Fila 6: Mujeres / Hombres
+    Fila 8: Descripción de qx
+    Fila 9 en adelante: Edades y tasas
+
+    Las tasas están expresadas en tanto por mil.
+    Se convierten a probabilidades dividiendo entre 1000.
+    """
+
+    df = pd.read_excel(
+        archivo,
+        sheet_name="Anexo 1.2 y Anexo 1.3",
+        header=None
     )
 
-    # Buscar columna edad
-    posibles_edad = [
-        "edad",
-        "age",
-        "x"
-    ]
+    if df.shape[1] < 3:
+        raise ValueError(
+            "El Excel no contiene las columnas esperadas."
+        )
 
-    columna_edad = None
+    titulo = str(df.iloc[4, 1]).strip()
 
-    for col in posibles_edad:
-
-        if col in df.columns:
-            columna_edad = col
-            break
-
-    if columna_edad is None:
+    if "PASEM2019_General_2ndo.orden" not in titulo:
 
         raise ValueError(
-            "El Excel debe contener una columna llamada edad."
+            "No se ha encontrado la tabla PASEM2019 "
+            "de segundo orden."
         )
 
-    # Buscar qx o lx
-    posibles_qx = [
-        "qx",
-        "q_x",
-        "prob_mortalidad",
-        "probabilidad_mortalidad"
-    ]
+    # Seleccionar columna según sexo
+    if sexo == "Mujeres":
+        columna = 1
 
-    posibles_lx = [
-        "lx",
-        "l_x",
-        "supervivientes",
-        "sobrevivientes"
-    ]
-
-    columna_qx = None
-    columna_lx = None
-
-    for col in posibles_qx:
-
-        if col in df.columns:
-            columna_qx = col
-            break
-
-    for col in posibles_lx:
-
-        if col in df.columns:
-            columna_lx = col
-            break
-
-    # Conservar columnas necesarias
-    if columna_qx is not None:
-
-        tabla = df[
-            [columna_edad, columna_qx]
-        ].copy()
-
-        tabla.columns = [
-            "edad",
-            "qx"
-        ]
-
-        tabla["edad"] = pd.to_numeric(
-            tabla["edad"],
-            errors="coerce"
-        )
-
-        tabla["qx"] = pd.to_numeric(
-            tabla["qx"],
-            errors="coerce"
-        )
-
-        tabla = tabla.dropna()
-
-        # Detectar qx en porcentaje
-        if tabla["qx"].max() > 1:
-
-            if tabla["qx"].max() <= 100:
-
-                tabla["qx"] = tabla["qx"] / 100
-
-            else:
-
-                raise ValueError(
-                    "Las probabilidades qx deben estar "
-                    "entre 0 y 1 o expresadas en porcentaje."
-                )
-
-        if (
-            (tabla["qx"] < 0).any()
-            or (tabla["qx"] > 1).any()
-        ):
-
-            raise ValueError(
-                "La columna qx contiene valores inválidos."
-            )
-
-    elif columna_lx is not None:
-
-        tabla = df[
-            [columna_edad, columna_lx]
-        ].copy()
-
-        tabla.columns = [
-            "edad",
-            "lx"
-        ]
-
-        tabla["edad"] = pd.to_numeric(
-            tabla["edad"],
-            errors="coerce"
-        )
-
-        tabla["lx"] = pd.to_numeric(
-            tabla["lx"],
-            errors="coerce"
-        )
-
-        tabla = tabla.dropna()
-
-        tabla = tabla.sort_values("edad")
-
-        if (tabla["lx"] <= 0).any():
-
-            raise ValueError(
-                "Los valores lx deben ser positivos."
-            )
-
-        if not tabla["lx"].is_monotonic_decreasing:
-
-            raise ValueError(
-                "La columna lx debe ser decreciente."
-            )
-
-        # Transformación de lx a qx
-        tabla["qx"] = (
-            1 - tabla["lx"].shift(-1) / tabla["lx"]
-        )
-
-        tabla = tabla.dropna(
-            subset=["qx"]
-        )
-
-        tabla = tabla[
-            ["edad", "qx"]
-        ]
+    elif sexo == "Hombres":
+        columna = 2
 
     else:
+        raise ValueError("Sexo no reconocido.")
 
-        raise ValueError(
-            "El Excel debe contener una columna qx o lx."
-        )
+    # Extraer edades y tasas
+    tabla = df.iloc[8:, [0, columna]].copy()
+
+    tabla.columns = [
+        "edad",
+        "qx_mil"
+    ]
+
+    tabla["edad"] = pd.to_numeric(
+        tabla["edad"],
+        errors="coerce"
+    )
+
+    tabla["qx_mil"] = pd.to_numeric(
+        tabla["qx_mil"],
+        errors="coerce"
+    )
+
+    tabla = tabla.dropna()
 
     tabla["edad"] = tabla["edad"].astype(int)
 
@@ -257,25 +150,48 @@ def preparar_tabla_mortalidad(df_original):
         "edad"
     ).reset_index(drop=True)
 
+    # Comprobar edades disponibles
+    edades_esperadas = list(range(0, 121))
+
+    if tabla["edad"].tolist() != edades_esperadas:
+
+        raise ValueError(
+            "La tabla debe contener las edades consecutivas "
+            "de 0 a 120."
+        )
+
     if tabla["edad"].duplicated().any():
 
         raise ValueError(
-            "La tabla contiene edades duplicadas."
+            "Existen edades duplicadas."
         )
 
-    # Comprobar continuidad de edades
-    edades = tabla["edad"].to_list()
+    # Validar tasas en tanto por mil
+    if (
+        (tabla["qx_mil"] < 0).any()
+        or (tabla["qx_mil"] > 1000).any()
+    ):
 
-    for i in range(len(edades) - 1):
+        raise ValueError(
+            "Se han encontrado tasas fuera del rango "
+            "válido de tanto por mil."
+        )
 
-        if edades[i + 1] != edades[i] + 1:
+    # Conversión de tanto por mil a probabilidad
+    tabla["qx"] = tabla["qx_mil"] / 1000
 
-            raise ValueError(
-                "La tabla de mortalidad debe tener "
-                "edades consecutivas."
-            )
+    if (
+        (tabla["qx"] < 0).any()
+        or (tabla["qx"] > 1).any()
+    ):
 
-    return tabla
+        raise ValueError(
+            "Existen probabilidades de mortalidad inválidas."
+        )
+
+    return tabla[
+        ["edad", "qx_mil", "qx"]
+    ]
 
 
 # ============================================================
@@ -290,13 +206,25 @@ def calcular_prima_vida_entera(
     tabla_mortalidad
 ):
 
-    tabla = tabla_mortalidad.copy()
+    """
+    Modelo actuarial MVP:
 
-    tabla = tabla.set_index(
-        "edad"
-    )
+    - Seguro de Vida Entera.
+    - Capital constante.
+    - Prestación al final del año de fallecimiento.
+    - Prima pura nivelada.
+    - Sin gastos ni recargos comerciales.
 
-    edad_maxima = tabla.index.max()
+    PREPAGABLE:
+    Prima al inicio del año mientras el asegurado viva.
+
+    POSTPAGABLE:
+    Prima al final del año si el asegurado sobrevive.
+    """
+
+    tabla = tabla_mortalidad.set_index("edad")
+
+    edad_maxima = int(tabla.index.max())
 
     if edad not in tabla.index:
 
@@ -305,20 +233,25 @@ def calcular_prima_vida_entera(
             "en la tabla de mortalidad."
         )
 
-    if edad_maxima <= edad:
+    if capital <= 0:
 
         raise ValueError(
-            "La tabla no contiene edades suficientes "
-            "para realizar el cálculo."
+            "El capital debe ser positivo."
+        )
+
+    if tipo_interes < 0:
+
+        raise ValueError(
+            "El tipo de interés no puede ser negativo."
         )
 
     v = 1 / (1 + tipo_interes)
 
-    probabilidad_supervivencia = 1.0
+    supervivencia = 1.0
 
-    valor_actual_prestaciones = 0.0
+    va_prestaciones = 0.0
 
-    valor_actual_primas = 0.0
+    va_unidad_primas = 0.0
 
     resultados = []
 
@@ -328,54 +261,52 @@ def calcular_prima_vida_entera(
 
     for k in range(
         0,
-        edad_maxima - edad
+        edad_maxima - edad + 1
     ):
 
         edad_actual = edad + k
 
-        qx = tabla.loc[
-            edad_actual,
-            "qx"
-        ]
+        qx = float(
+            tabla.loc[edad_actual, "qx"]
+        )
 
         px = 1 - qx
 
-        supervivencia_inicio = (
-            probabilidad_supervivencia
-        )
+        supervivencia_inicio = supervivencia
 
-        supervivencia_fin = (
+        supervivencia_final = (
             supervivencia_inicio * px
         )
 
         # ----------------------------------------------------
-        # PRESTACION ESPERADA
+        # PROBABILIDAD DE FALLECIMIENTO
         # ----------------------------------------------------
 
         prob_fallecimiento = (
             supervivencia_inicio * qx
         )
 
-        # Fallecimiento al final del año
+        # ----------------------------------------------------
+        # PRESTACION ESPERADA
+        # ----------------------------------------------------
+
+        prestacion_esperada = (
+            capital * prob_fallecimiento
+        )
+
         descuento_prestacion = (
             v ** (k + 1)
         )
 
-        flujo_prestacion_esperado = (
-            capital * prob_fallecimiento
-        )
-
-        valor_actual_prestacion = (
-            flujo_prestacion_esperado
+        va_prestacion = (
+            prestacion_esperada
             * descuento_prestacion
         )
 
-        valor_actual_prestaciones += (
-            valor_actual_prestacion
-        )
+        va_prestaciones += va_prestacion
 
         # ----------------------------------------------------
-        # PRIMA ESPERADA
+        # FACTOR DE PRIMA
         # ----------------------------------------------------
 
         if tipo_pago == "Prepagable":
@@ -391,7 +322,7 @@ def calcular_prima_vida_entera(
         else:
 
             prob_pago_prima = (
-                supervivencia_fin
+                supervivencia_final
             )
 
             descuento_prima = (
@@ -403,9 +334,11 @@ def calcular_prima_vida_entera(
             * descuento_prima
         )
 
-        valor_actual_primas += (
-            factor_prima
-        )
+        va_unidad_primas += factor_prima
+
+        # ----------------------------------------------------
+        # REGISTRO DE FLUJOS
+        # ----------------------------------------------------
 
         resultados.append({
 
@@ -413,75 +346,73 @@ def calcular_prima_vida_entera(
 
             "Edad": edad_actual,
 
-            "Prob. supervivencia": (
-                supervivencia_inicio
-            ),
+            "qx": qx,
 
-            "Prob. fallecimiento": (
-                prob_fallecimiento
-            ),
+            "px": px,
 
-            "Prestación esperada (€)": (
-                flujo_prestacion_esperado
-            ),
+            "Supervivencia": supervivencia_inicio,
 
-            "VA prestación (€)": (
-                valor_actual_prestacion
-            ),
+            "Prob. fallecimiento": prob_fallecimiento,
 
-            "Factor prima": (
-                factor_prima
-            ),
+            "Prestación esperada (€)": prestacion_esperada,
 
-            "Prob. supervivencia final": (
-                supervivencia_fin
-            )
+            "VA prestación (€)": va_prestacion,
+
+            "Factor prima": factor_prima,
+
+            "Prob. supervivencia final": supervivencia_final
 
         })
 
-        probabilidad_supervivencia = (
-            supervivencia_fin
-        )
+        supervivencia = supervivencia_final
 
-        # Si qx = 1, ya no existen supervivientes
-        if qx >= 1:
-
+        # Extinción de la población asegurada
+        if qx == 1:
             break
 
     # --------------------------------------------------------
-    # PRIMA PURA
+    # CALCULO DE PRIMA PURA
     # --------------------------------------------------------
 
-    if valor_actual_primas <= 0:
+    if va_unidad_primas <= 0:
 
         raise ValueError(
-            "El valor actuarial de las primas es cero."
+            "El valor actual de las primas es cero."
         )
 
     prima_anual = (
-        valor_actual_prestaciones
-        / valor_actual_primas
+        va_prestaciones / va_unidad_primas
     )
 
     # --------------------------------------------------------
-    # INCORPORAR PRIMA A LOS FLUJOS
+    # TABLA DE FLUJOS CORREGIDA
     # --------------------------------------------------------
 
-    df_resultados = pd.DataFrame(
-        resultados
-    )
+    df_resultados = pd.DataFrame(resultados)
 
-    df_resultados[
-        "Prima esperada (€)"
-    ] = (
-        df_resultados["Factor prima"]
+    # Probabilidad de pago de prima
+    if tipo_pago == "Prepagable":
+
+        df_resultados["Prob. pago prima"] = (
+            df_resultados["Supervivencia"]
+        )
+
+    else:
+
+        df_resultados["Prob. pago prima"] = (
+            df_resultados["Prob. supervivencia final"]
+        )
+
+    # Prima esperada sin descuento
+    df_resultados["Prima esperada (€)"] = (
+        df_resultados["Prob. pago prima"]
         * prima_anual
     )
 
-    df_resultados[
-        "VA prima (€)"
-    ] = (
-        df_resultados["Prima esperada (€)"]
+    # Valor actual de la prima
+    df_resultados["VA prima (€)"] = (
+        df_resultados["Factor prima"]
+        * prima_anual
     )
 
     # --------------------------------------------------------
@@ -492,17 +423,13 @@ def calcular_prima_vida_entera(
 
         "prima_anual": prima_anual,
 
-        "prima_mensual": (
+        "prima_mensual_equivalente": (
             prima_anual / 12
         ),
 
-        "valor_actual_prestaciones": (
-            valor_actual_prestaciones
-        ),
+        "va_prestaciones": va_prestaciones,
 
-        "valor_actual_primas": (
-            valor_actual_primas
-        ),
+        "va_unidad_primas": va_unidad_primas,
 
         "tabla_flujos": df_resultados
 
@@ -516,6 +443,7 @@ def calcular_prima_vida_entera(
 columnas = [
 
     "producto",
+    "sexo",
     "fecha_nacimiento",
     "edad_actuarial",
     "fecha_efecto",
@@ -543,7 +471,7 @@ st.header("01. Nueva tarificación")
 with st.form("formulario"):
 
     # --------------------------------------------------------
-    # DATOS ASEGURADO
+    # DATOS DEL ASEGURADO
     # --------------------------------------------------------
 
     st.subheader("Datos del asegurado")
@@ -571,20 +499,20 @@ with st.form("formulario"):
 
     with col3:
 
+        sexo = st.selectbox(
+            "Sexo",
+            ["Mujeres", "Hombres"]
+        )
+
+    with col4:
+
         producto = st.selectbox(
             "Producto",
             ["Vida Entera"]
         )
 
-    with col4:
-
-        tipo_de_pago = st.selectbox(
-            "Tipo de pago",
-            ["Prepagable", "Postpagable"]
-        )
-
     # --------------------------------------------------------
-    # CARACTERISTICAS
+    # CARACTERISTICAS DEL SEGURO
     # --------------------------------------------------------
 
     st.divider()
@@ -617,7 +545,7 @@ with st.form("formulario"):
         edad_cobertura = st.number_input(
             "Edad cobertura",
             min_value=18,
-            max_value=100,
+            max_value=120,
             value=60,
             step=1
         )
@@ -630,7 +558,18 @@ with st.form("formulario"):
         )
 
     # --------------------------------------------------------
-    # RESUMEN
+    # TIPO DE PAGO
+    # --------------------------------------------------------
+
+    st.divider()
+
+    tipo_de_pago = st.selectbox(
+        "Momento de pago de la prima",
+        ["Prepagable", "Postpagable"]
+    )
+
+    # --------------------------------------------------------
+    # RESUMEN ACTUARIAL
     # --------------------------------------------------------
 
     edad_actuarial = calcular_edad_actuarial(
@@ -705,6 +644,8 @@ if enviar:
 
             "producto": producto,
 
+            "sexo": sexo,
+
             "fecha_nacimiento": fecha_nacimiento,
 
             "edad_actuarial": edad_actuarial,
@@ -737,141 +678,162 @@ if enviar:
 
 
 # ============================================================
-# 8. CALCULO ACTUARIAL
+# 8. CARGA DE TABLA DE MORTALIDAD
 # ============================================================
 
 st.divider()
 
-st.header("02. Cálculo actuarial")
+st.header("02. Hipótesis biométricas")
 
 st.markdown(
     """
-    **Objetivo:** calcular la prima pura de riesgo de una póliza
-    de Vida Entera, utilizando una tabla de mortalidad externa.
+    **Tabla de mortalidad: PASEM2019 - Segundo orden**
+
+    Fuente: Anexo facilitado para el proyecto actuarial.
+
+    Los valores originales están expresados en tanto por mil.
+    El sistema los convierte automáticamente a probabilidades.
     """
 )
 
-# ------------------------------------------------------------
-# SELECCIONAR POLIZA
-# ------------------------------------------------------------
+archivo_mortalidad = st.file_uploader(
+    "Subir Excel de tablas de mortalidad",
+    type=["xlsx"],
+    key="tabla_mortalidad"
+)
 
-if not st.session_state.polizas.empty:
+tabla_mortalidad = None
 
-    st.subheader("Seleccionar póliza")
+if archivo_mortalidad is not None:
 
-    indice_poliza = st.selectbox(
-        "Póliza sobre la que realizar el cálculo",
-        st.session_state.polizas.index,
-        format_func=lambda x: (
-            f"Cotización {x + 1} | "
-            f"Edad {st.session_state.polizas.loc[x, 'edad_actuarial']} | "
-            f"Capital "
-            f"{st.session_state.polizas.loc[x, 'capital_asegurado']:,.2f} €"
+    try:
+
+        sexo_tabla = st.selectbox(
+            "Serie biométrica",
+            ["Mujeres", "Hombres"],
+            key="sexo_tabla"
         )
-    )
 
-    poliza_seleccionada = (
-        st.session_state.polizas.loc[
-            indice_poliza
-        ]
-    )
+        tabla_mortalidad = preparar_tabla_pasem(
+            archivo_mortalidad,
+            sexo_tabla
+        )
 
-    # --------------------------------------------------------
-    # MOSTRAR DATOS
-    # --------------------------------------------------------
+        st.success(
+            "Tabla PASEM2019 cargada y validada correctamente."
+        )
 
-    st.subheader("Datos de la póliza seleccionada")
+        col1, col2, col3 = st.columns(3)
 
-    c1, c2, c3, c4 = st.columns(4)
+        col1.metric(
+            "Edad inicial",
+            tabla_mortalidad["edad"].min()
+        )
 
-    c1.metric(
-        "Edad actuarial",
-        f"{poliza_seleccionada['edad_actuarial']} años"
-    )
+        col2.metric(
+            "Edad final",
+            tabla_mortalidad["edad"].max()
+        )
 
-    c2.metric(
-        "Capital asegurado",
-        f"{poliza_seleccionada['capital_asegurado']:,.2f} €"
-    )
+        col3.metric(
+            "Número de edades",
+            len(tabla_mortalidad)
+        )
 
-    c3.metric(
-        "Tipo de pago",
-        poliza_seleccionada["tipo_de_pago"]
-    )
-
-    c4.metric(
-        "Modalidad",
-        poliza_seleccionada["modalidad_pago"]
-    )
-
-    # --------------------------------------------------------
-    # CARGA TABLA MORTALIDAD
-    # --------------------------------------------------------
-
-    st.divider()
-
-    st.subheader("Hipótesis biométricas")
-
-    archivo_mortalidad = st.file_uploader(
-        "Sube la tabla de mortalidad en Excel",
-        type=["xlsx", "xls"],
-        key="tabla_mortalidad"
-    )
-
-    tabla_mortalidad = None
-
-    if archivo_mortalidad is not None:
-
-        try:
-
-            excel = pd.ExcelFile(
-                archivo_mortalidad
-            )
-
-            hoja = st.selectbox(
-                "Selecciona la hoja de Excel",
-                excel.sheet_names
-            )
-
-            df_excel = pd.read_excel(
-                archivo_mortalidad,
-                sheet_name=hoja
-            )
-
-            tabla_mortalidad = (
-                preparar_tabla_mortalidad(
-                    df_excel
-                )
-            )
-
-            st.success(
-                "Tabla de mortalidad cargada correctamente."
-            )
-
-            st.write(
-                "Vista previa:"
-            )
+        with st.expander(
+            "Consultar tabla de mortalidad"
+        ):
 
             st.dataframe(
-                tabla_mortalidad.head(10),
+                tabla_mortalidad,
                 use_container_width=True,
                 hide_index=True
             )
 
-            st.caption(
-                f"Edades disponibles: "
-                f"{tabla_mortalidad['edad'].min()} - "
-                f"{tabla_mortalidad['edad'].max()}"
-            )
+    except Exception as e:
 
-        except Exception as e:
+        st.error(
+            f"Error al procesar la tabla: {e}"
+        )
 
-            st.error(
-                f"Error al cargar la tabla: {e}"
+
+# ============================================================
+# 9. CALCULO ACTUARIAL
+# ============================================================
+
+st.divider()
+
+st.header("03. Cálculo de la prima de riesgo")
+
+if not st.session_state.polizas.empty:
+
+    # --------------------------------------------------------
+    # SELECCION DE POLIZA
+    # --------------------------------------------------------
+
+    st.subheader("Seleccionar póliza")
+
+    indice_poliza = st.selectbox(
+        "Selecciona la cotización",
+        st.session_state.polizas.index,
+        format_func=lambda x: (
+            f"Cotización {x + 1} | "
+            f"{st.session_state.polizas.loc[x, 'sexo']} | "
+            f"Edad "
+            f"{st.session_state.polizas.loc[x, 'edad_actuarial']} | "
+            f"Capital "
+            f"{st.session_state.polizas.loc[x, 'capital_asegurado']:,.2f} €"
+        ),
+        key="poliza_calculo"
+    )
+
+    poliza = st.session_state.polizas.loc[
+        indice_poliza
+    ]
+
+    # --------------------------------------------------------
+    # DATOS DE LA POLIZA
+    # --------------------------------------------------------
+
+    st.subheader("Datos de la póliza")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric(
+        "Edad actuarial",
+        f"{poliza['edad_actuarial']} años"
+    )
+
+    col2.metric(
+        "Sexo",
+        poliza["sexo"]
+    )
+
+    col3.metric(
+        "Capital asegurado",
+        f"{poliza['capital_asegurado']:,.2f} €"
+    )
+
+    col4.metric(
+        "Tipo de pago",
+        poliza["tipo_de_pago"]
+    )
+
+    # --------------------------------------------------------
+    # COMPROBAR SEXO
+    # --------------------------------------------------------
+
+    if archivo_mortalidad is not None:
+
+        if sexo_tabla != poliza["sexo"]:
+
+            st.warning(
+                "La serie biométrica seleccionada no coincide "
+                "con el sexo registrado en la póliza."
             )
 
     # --------------------------------------------------------
-    # TIPO DE INTERES
+    # HIPOTESIS FINANCIERA
     # --------------------------------------------------------
 
     st.divider()
@@ -883,7 +845,8 @@ if not st.session_state.polizas.empty:
         min_value=0.0,
         max_value=20.0,
         value=2.0,
-        step=0.25
+        step=0.25,
+        format="%.2f"
     )
 
     tipo_interes_decimal = (
@@ -891,7 +854,7 @@ if not st.session_state.polizas.empty:
     )
 
     # --------------------------------------------------------
-    # BOTON CALCULAR
+    # BOTON DE CALCULO
     # --------------------------------------------------------
 
     calcular = st.button(
@@ -905,283 +868,61 @@ if not st.session_state.polizas.empty:
         if tabla_mortalidad is None:
 
             st.error(
-                "Debes cargar primero una tabla "
+                "Primero debes cargar una tabla "
                 "de mortalidad válida."
+            )
+
+        elif sexo_tabla != poliza["sexo"]:
+
+            st.error(
+                "La serie biométrica no coincide con "
+                "el sexo de la póliza."
             )
 
         else:
 
             try:
 
-                resultado = (
-                    calcular_prima_vida_entera(
+                resultado = calcular_prima_vida_entera(
 
-                        edad=int(
-                            poliza_seleccionada[
-                                "edad_actuarial"
-                            ]
-                        ),
-
-                        capital=float(
-                            poliza_seleccionada[
-                                "capital_asegurado"
-                            ]
-                        ),
-
-                        tipo_interes=(
-                            tipo_interes_decimal
-                        ),
-
-                        tipo_pago=(
-                            poliza_seleccionada[
-                                "tipo_de_pago"
-                            ]
-                        ),
-
-                        tabla_mortalidad=(
-                            tabla_mortalidad
-                        )
-
-                    )
-                )
-
-                # ------------------------------------------------
-                # RESULTADOS
-                # ------------------------------------------------
-
-                st.divider()
-
-                st.header("03. Resultado de la tarificación")
-
-                prima_anual = resultado[
-                    "prima_anual"
-                ]
-
-                prima_mensual = resultado[
-                    "prima_mensual"
-                ]
-
-                if (
-                    poliza_seleccionada[
-                        "modalidad_pago"
-                    ] == "Anual"
-                ):
-
-                    prima_mostrada = prima_anual
-
-                    texto_modalidad = "Prima anual"
-
-                else:
-
-                    prima_mostrada = prima_mensual
-
-                    texto_modalidad = (
-                        "Prima mensual equivalente"
-                    )
-
-                col1, col2, col3 = st.columns(3)
-
-                col1.metric(
-                    texto_modalidad,
-                    f"{prima_mostrada:,.2f} €"
-                )
-
-                col2.metric(
-                    "Prima anual pura",
-                    f"{prima_anual:,.2f} €"
-                )
-
-                col3.metric(
-                    "Prima mensual equivalente",
-                    f"{prima_mensual:,.2f} €"
-                )
-
-                # ------------------------------------------------
-                # DESGLOSE ACTUARIAL
-                # ------------------------------------------------
-
-                st.subheader(
-                    "Desglose del cálculo actuarial"
-                )
-
-                col4, col5 = st.columns(2)
-
-                col4.metric(
-                    "VA de las prestaciones",
-                    f"{resultado['valor_actual_prestaciones']:,.2f} €"
-                )
-
-                col5.metric(
-                    "VA de la unidad de primas",
-                    f"{resultado['valor_actual_primas']:,.6f}"
-                )
-
-                st.markdown(
-                    r"""
-                    \[
-                    P = \frac{VA(\text{Prestaciones})}
-                    {VA(\text{Unidad de primas})}
-                    \]
-                    """
-                )
-
-                # ------------------------------------------------
-                # FLUJOS ESPERADOS
-                # ------------------------------------------------
-
-                st.divider()
-
-                st.header(
-                    "04. Flujo actuarial de la póliza"
-                )
-
-                df_flujos = resultado[
-                    "tabla_flujos"
-                ]
-
-                st.subheader(
-                    "Prestaciones y primas esperadas"
-                )
-
-                st.line_chart(
-                    df_flujos.set_index("Año")[
-                        [
-                            "Prestación esperada (€)",
-                            "Prima esperada (€)"
-                        ]
-                    ]
-                )
-
-                st.caption(
-                    """
-                    Los flujos esperados representan el capital
-                    de fallecimiento ponderado por la probabilidad
-                    de fallecimiento de cada año y las primas
-                    ponderadas por la probabilidad de pago.
-                    """
-                )
-
-                # ------------------------------------------------
-                # VALORES ACTUALES
-                # ------------------------------------------------
-
-                st.subheader(
-                    "Valores actuales por año"
-                )
-
-                st.line_chart(
-                    df_flujos.set_index("Año")[
-                        [
-                            "VA prestación (€)",
-                            "VA prima (€)"
-                        ]
-                    ]
-                )
-
-                # ------------------------------------------------
-                # TABLA DETALLADA
-                # ------------------------------------------------
-
-                st.subheader(
-                    "Detalle anual del cálculo"
-                )
-
-                st.dataframe(
-                    df_flujos,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-                # ------------------------------------------------
-                # DESCARGA EXCEL
-                # ------------------------------------------------
-
-                salida = BytesIO()
-
-                with pd.ExcelWriter(
-                    salida,
-                    engine="openpyxl"
-                ) as writer:
-
-                    df_flujos.to_excel(
-                        writer,
-                        sheet_name="Flujos actuariales",
-                        index=False
-                    )
-
-                    pd.DataFrame({
-
-                        "Concepto": [
-
-                            "Capital asegurado",
-
-                            "Edad actuarial",
-
-                            "Tipo interés técnico",
-
-                            "Prima anual",
-
-                            "Prima mensual",
-
-                            "VA prestaciones",
-
-                            "VA unidad primas"
-
-                        ],
-
-                        "Valor": [
-
-                            poliza_seleccionada[
-                                "capital_asegurado"
-                            ],
-
-                            poliza_seleccionada[
-                                "edad_actuarial"
-                            ],
-
-                            tipo_interes,
-
-                            prima_anual,
-
-                            prima_mensual,
-
-                            resultado[
-                                "valor_actual_prestaciones"
-                            ],
-
-                            resultado[
-                                "valor_actual_primas"
-                            ]
-
-                        ]
-
-                    }).to_excel(
-                        writer,
-                        sheet_name="Resumen",
-                        index=False
-                    )
-
-                st.download_button(
-
-                    "Descargar cálculo en Excel",
-
-                    data=salida.getvalue(),
-
-                    file_name="calculo_actuarial.xlsx",
-
-                    mime=(
-                        "application/vnd.openxmlformats-officedocument."
-                        "spreadsheetml.sheet"
+                    edad=int(
+                        poliza["edad_actuarial"]
                     ),
 
-                    use_container_width=True
+                    capital=float(
+                        poliza["capital_asegurado"]
+                    ),
 
+                    tipo_interes=tipo_interes_decimal,
+
+                    tipo_pago=poliza["tipo_de_pago"],
+
+                    tabla_mortalidad=tabla_mortalidad
+
+                )
+
+                st.session_state.resultado_calculo = resultado
+
+                st.session_state.datos_calculo = {
+
+                    "indice_poliza": int(indice_poliza),
+
+                    "sexo": sexo_tabla,
+
+                    "tipo_interes": tipo_interes,
+
+                    "tabla": "PASEM2019 - Segundo orden"
+
+                }
+
+                st.success(
+                    "Cálculo actuarial realizado correctamente."
                 )
 
             except Exception as e:
 
                 st.error(
-                    f"No se pudo realizar el cálculo: {e}"
+                    f"Error en el cálculo actuarial: {e}"
                 )
 
 else:
@@ -1193,16 +934,299 @@ else:
 
 
 # ============================================================
-# 9. HISTORICO DE POLIZAS
+# 10. PRESENTACION DE RESULTADOS
+# ============================================================
+
+if "resultado_calculo" in st.session_state:
+
+    resultado = st.session_state.resultado_calculo
+
+    datos_calculo = st.session_state.datos_calculo
+
+    st.divider()
+
+    st.header("04. Resultado de la tarificación")
+
+    if (
+        datos_calculo["indice_poliza"]
+        not in st.session_state.polizas.index
+    ):
+
+        st.warning(
+            "La póliza asociada al cálculo ya no existe."
+        )
+
+    else:
+
+        poliza_resultado = st.session_state.polizas.loc[
+            datos_calculo["indice_poliza"]
+        ]
+
+        prima_anual = resultado["prima_anual"]
+
+        prima_mensual = resultado[
+            "prima_mensual_equivalente"
+        ]
+
+        # ----------------------------------------------------
+        # PRIMA SEGUN MODALIDAD
+        # ----------------------------------------------------
+
+        if poliza_resultado["modalidad_pago"] == "Anual":
+
+            prima_mostrada = prima_anual
+
+            texto_prima = "Prima anual pura"
+
+        else:
+
+            prima_mostrada = prima_mensual
+
+            texto_prima = "Prima mensual equivalente"
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            texto_prima,
+            f"{prima_mostrada:,.2f} €"
+        )
+
+        col2.metric(
+            "Prima anual",
+            f"{prima_anual:,.2f} €"
+        )
+
+        col3.metric(
+            "Prima mensual equivalente",
+            f"{prima_mensual:,.2f} €"
+        )
+
+        st.caption(
+            "La prima mensual es una aproximación aritmética "
+            "de la prima anual dividida entre doce."
+        )
+
+        # ----------------------------------------------------
+        # DESGLOSE ACTUARIAL
+        # ----------------------------------------------------
+
+        st.subheader("Desglose actuarial")
+
+        col4, col5 = st.columns(2)
+
+        col4.metric(
+            "VA de las prestaciones",
+            f"{resultado['va_prestaciones']:,.2f} €"
+        )
+
+        col5.metric(
+            "VA de la unidad de primas",
+            f"{resultado['va_unidad_primas']:,.6f}"
+        )
+
+        if poliza_resultado["tipo_de_pago"] == "Prepagable":
+
+            st.latex(
+                r"P = \frac{C \cdot A_x}{\ddot{a}_x}"
+            )
+
+        else:
+
+            st.latex(
+                r"P = \frac{C \cdot A_x}{a_x}"
+            )
+
+        st.caption(
+            "El denominador representa el valor actual "
+            "de la unidad de primas según el calendario "
+            "de pago seleccionado."
+        )
+
+        # ----------------------------------------------------
+        # TABLA DE FLUJOS
+        # ----------------------------------------------------
+
+        df_flujos = resultado["tabla_flujos"]
+
+        st.divider()
+
+        st.header("05. Flujo actuarial de la póliza")
+
+        st.subheader(
+            "Prestaciones y primas esperadas"
+        )
+
+        st.line_chart(
+            df_flujos.set_index("Año")[
+                [
+                    "Prestación esperada (€)",
+                    "Prima esperada (€)"
+                ]
+            ]
+        )
+
+        st.caption(
+            """
+            Las prestaciones esperadas se obtienen multiplicando
+            el capital asegurado por la probabilidad de fallecimiento
+            de cada año.
+
+            Las primas esperadas se ponderan por la probabilidad
+            de que la prima sea pagada.
+            """
+        )
+
+        # ----------------------------------------------------
+        # VALORES ACTUALES
+        # ----------------------------------------------------
+
+        st.subheader(
+            "Valores actuales de prestaciones y primas"
+        )
+
+        st.line_chart(
+            df_flujos.set_index("Año")[
+                [
+                    "VA prestación (€)",
+                    "VA prima (€)"
+                ]
+            ]
+        )
+
+        # ----------------------------------------------------
+        # SUPERVIVENCIA
+        # ----------------------------------------------------
+
+        st.subheader(
+            "Evolución de la supervivencia"
+        )
+
+        st.line_chart(
+            df_flujos.set_index("Edad")[
+                ["Supervivencia"]
+            ]
+        )
+
+        # ----------------------------------------------------
+        # DETALLE ANUAL
+        # ----------------------------------------------------
+
+        with st.expander(
+            "Consultar detalle anual del cálculo"
+        ):
+
+            st.dataframe(
+                df_flujos,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        # ----------------------------------------------------
+        # DESCARGA EXCEL
+        # ----------------------------------------------------
+
+        st.divider()
+
+        st.subheader(
+            "Exportar cálculo actuarial"
+        )
+
+        salida = BytesIO()
+
+        with pd.ExcelWriter(
+            salida,
+            engine="openpyxl"
+        ) as writer:
+
+            df_flujos.to_excel(
+                writer,
+                sheet_name="Flujos actuariales",
+                index=False
+            )
+
+            resumen = pd.DataFrame({
+
+                "Concepto": [
+
+                    "Producto",
+                    "Sexo",
+                    "Edad actuarial",
+                    "Capital asegurado",
+                    "Tabla de mortalidad",
+                    "Tipo de interés técnico",
+                    "Tipo de pago",
+                    "Prima anual pura",
+                    "Prima mensual equivalente",
+                    "VA prestaciones",
+                    "VA unidad de primas"
+
+                ],
+
+                "Valor": [
+
+                    poliza_resultado["producto"],
+
+                    poliza_resultado["sexo"],
+
+                    poliza_resultado["edad_actuarial"],
+
+                    poliza_resultado["capital_asegurado"],
+
+                    datos_calculo["tabla"],
+
+                    datos_calculo["tipo_interes"],
+
+                    poliza_resultado["tipo_de_pago"],
+
+                    prima_anual,
+
+                    prima_mensual,
+
+                    resultado["va_prestaciones"],
+
+                    resultado["va_unidad_primas"]
+
+                ]
+
+            })
+
+            resumen.to_excel(
+                writer,
+                sheet_name="Resumen",
+                index=False
+            )
+
+        st.download_button(
+
+            label="Descargar cálculo actuarial en Excel",
+
+            data=salida.getvalue(),
+
+            file_name="resultado_cotizacion_actuarial.xlsx",
+
+            mime=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+
+            use_container_width=True
+
+        )
+
+
+# ============================================================
+# 11. HISTORICO DE POLIZAS
 # ============================================================
 
 st.divider()
 
-st.header("05. Solicitudes registradas")
+st.header("06. Histórico de pólizas")
 
 if not st.session_state.polizas.empty:
 
-    st.subheader("Histórico de pólizas")
+    st.subheader(
+        "Solicitudes registradas"
+    )
 
     st.dataframe(
         st.session_state.polizas,
@@ -1212,10 +1236,12 @@ if not st.session_state.polizas.empty:
 
     st.divider()
 
-    st.subheader("Eliminar póliza")
+    st.subheader(
+        "Eliminar póliza"
+    )
 
     indice_eliminar = st.selectbox(
-        "Selecciona la póliza a eliminar",
+        "Selecciona la póliza",
         st.session_state.polizas.index,
         format_func=lambda x: (
             f"Cotización {x + 1}"
@@ -1223,13 +1249,26 @@ if not st.session_state.polizas.empty:
         key="eliminar_poliza"
     )
 
-    if st.button("Eliminar póliza"):
+    if st.button(
+        "Eliminar póliza",
+        type="secondary"
+    ):
 
         st.session_state.polizas = (
             st.session_state.polizas
             .drop(index=indice_eliminar)
             .reset_index(drop=True)
         )
+
+        if "resultado_calculo" in st.session_state:
+
+            st.session_state.pop(
+                "resultado_calculo"
+            )
+
+            st.session_state.pop(
+                "datos_calculo"
+            )
 
         st.success(
             "Póliza eliminada correctamente."
@@ -1245,8 +1284,10 @@ else:
 
 
 # ============================================================
-# 10. PIE
+# 12. PIE DE PAGINA
 # ============================================================
+
+st.divider()
 
 st.caption(
     "Life Insurance Analytics | Proyecto actuarial | MVP"
