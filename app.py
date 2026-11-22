@@ -308,7 +308,7 @@ if not st.session_state.polizas.empty:
     # TABLA DE POLIZAS
     # --------------------------------------------------------
 
-    st.subheader("Histórico de polizas)
+    st.subheader("Histórico de polizas")
 
     st.dataframe(
         st.session_state.polizas,
