@@ -14,11 +14,12 @@ from io import BytesIO
 # ============================================================
 
 st.set_page_config(
-    page_title="Cotizador actuarial de seguros de Vida",
+    page_title="Calculo de primas de seguros de Vida",
     layout="wide"
 )
 
-st.title("Cotizador actuarial de seguros de Vida")
+st.title("Calculo de primas de seguros de Vida")
+st.caption("Cotizador actuarial ")
 
 st.divider()
 
@@ -205,7 +206,7 @@ with st.form("formulario"):
 
     st.divider()
 
-    st.subheader("03. Resumen actuarial")
+    st.subheader("04. Resumen actuarial")
 
     col9, col10, col11 = st.columns(3)
 
@@ -228,7 +229,7 @@ with st.form("formulario"):
     st.divider()
 
     # --------------------------------------------------------
-    # BOTON DE COTIZACION
+    # BOTON DE GUARDAR
     # --------------------------------------------------------
 
     enviar = st.form_submit_button(
@@ -293,21 +294,21 @@ if enviar:
 
 
 # ============================================================
-# 6. GESTION DE SOLICITUDES
+# 6. GESTION DE POLIZAS
 # ============================================================
 
 st.divider()
 
-st.header("Gestión de Pólizas Registradas")
+st.header("Solicitudes registradas")
 
 if not st.session_state.polizas.empty:
 
 
     # --------------------------------------------------------
-    # TABLA DE SOLICITUDES
+    # TABLA DE POLIZAS
     # --------------------------------------------------------
 
-    st.subheader("Histórico de polizas")
+    st.subheader("Histórico de polizas)
 
     st.dataframe(
         st.session_state.polizas,
@@ -317,7 +318,7 @@ if not st.session_state.polizas.empty:
 
 
     # --------------------------------------------------------
-    # ELIMINACION DE SOLICITUDES
+    # ELIMINACION DE POLIZAS
     # --------------------------------------------------------
 
     st.divider()
@@ -330,7 +331,7 @@ if not st.session_state.polizas.empty:
         format_func=lambda x: f"Cotización {x + 1}"
     )
 
-    if st.button("Eliminar cotización"):
+    if st.button("Eliminar Poliza"):
     
         st.session_state.polizas = (
             st.session_state.polizas
@@ -338,14 +339,14 @@ if not st.session_state.polizas.empty:
             .reset_index(drop=True)
         )
     
-        st.success("Cotización eliminada correctamente.")
+        st.success("Poliza eliminada correctamente.")
     
         st.rerun()
     
     else:
     
         st.info(
-            "Todavía no hay solicitudes registradas."
+            "Todavía no hay polzas registradas."
         )
 
 
